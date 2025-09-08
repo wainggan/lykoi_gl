@@ -4,6 +4,8 @@ version = "0.0.0"
 edition = "2024"
 authors = ["parchii"]
 description = "terrible opengl bindings"
+repository = "https://github.com/wainggan/lykoi_gl"
+license = "MIT"
 
 [dependencies]
 gl = "0.14.0"
