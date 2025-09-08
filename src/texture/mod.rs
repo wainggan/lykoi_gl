@@ -279,17 +279,114 @@ pub enum TexImage1DTarget {
 
 
 /// [`glTexImage1D()`](https://docs.gl/gl3/glTexImage1D)
-/// 
-/// safety: must ensure that `data` has enough bytes
-pub unsafe fn tex_image_1d(
+pub fn tex_image_1d(
 	target: TexImage1DTarget,
 	level: u16,
 	inner_format: TexImageInnerFormat,
 	width: usize,
 	data_format: TexImageDataFormat,
-	data_type: TexImageDataType, 
-	data: Option<&[u8]>
+	data_type: TexImageDataType,
+	data: Option<&[u8]>,
 ) {
+	debug_assert!(
+		match data_type {
+			| TexImageDataType::UnsignedByte_3_3_2
+			| TexImageDataType::UnsignedByte_2_3_3_Rev
+			| TexImageDataType::UnsignedShort_5_6_5
+			| TexImageDataType::UnsignedShort_5_6_5_Rev =>
+				match data_format {
+					TexImageDataFormat::RGB => true,
+					_ => false,
+				},
+			| TexImageDataType::UnsignedShort_4_4_4_4
+			| TexImageDataType::UnsignedShort_4_4_4_4_Rev
+			| TexImageDataType::UnsignedShort_5_5_5_1
+			| TexImageDataType::UnsignedShort_1_5_5_5_Rev
+			| TexImageDataType::UnsignedInt_8_8_8_8
+			| TexImageDataType::UnsignedInt_8_8_8_8_Rev
+			| TexImageDataType::UnsignedInt_10_10_10_2
+			| TexImageDataType::UnsignedInt_2_10_10_10_Rev =>
+				match data_format {
+					| TexImageDataFormat::RGBA
+					| TexImageDataFormat::BGRA => true,
+					_ => false,
+				},
+			_ => true,
+		},
+		"invalid format",
+	);
+
+	debug_assert!(
+		match inner_format {
+			| TexImageInnerFormat::DepthComponent
+			| TexImageInnerFormat::DepthComponent16
+			| TexImageInnerFormat::DepthComponent24
+			| TexImageInnerFormat::DepthComponent32F => 
+				match data_format {
+					| TexImageDataFormat::DepthComponent => true,
+					_ => false,
+				},
+			_ => match data_format {
+					| TexImageDataFormat::DepthComponent => false,
+					_ => true,
+				},
+		},
+		"invalid format",
+	);
+
+	if let Some(bytes) = data {
+		let stride = match data_format {
+			TexImageDataFormat::Red => 1,
+			TexImageDataFormat::RG => 2,
+			TexImageDataFormat::RGB
+			| TexImageDataFormat::BGR => 3,
+			TexImageDataFormat::RGBA
+			| TexImageDataFormat::BGRA => 4,
+			// deal with it later
+			TexImageDataFormat::DepthComponent => 1,
+			// what the fuck ???
+			_ => 0,
+		};
+
+		debug_assert!(stride != 0, "invalid data format");
+
+		let size = match data_type {
+			| TexImageDataType::Byte
+			| TexImageDataType::UnsignedByte
+				=> stride * 1,
+			| TexImageDataType::UnsignedByte_3_3_2
+			| TexImageDataType::UnsignedByte_2_3_3_Rev
+				=> 1,
+			| TexImageDataType::Short
+			| TexImageDataType::UnsignedShort
+				=> stride * 2,
+			| TexImageDataType::UnsignedShort_5_6_5
+			| TexImageDataType::UnsignedShort_5_6_5_Rev
+			| TexImageDataType::UnsignedShort_4_4_4_4
+			| TexImageDataType::UnsignedShort_4_4_4_4_Rev
+			| TexImageDataType::UnsignedShort_5_5_5_1
+			| TexImageDataType::UnsignedShort_1_5_5_5_Rev
+				=> 2,
+			| TexImageDataType::Int
+			| TexImageDataType::UnsignedInt
+			| TexImageDataType::Float
+				=> stride * 4,
+			| TexImageDataType::UnsignedInt_8_8_8_8
+			| TexImageDataType::UnsignedInt_8_8_8_8_Rev
+			| TexImageDataType::UnsignedInt_10_10_10_2
+			| TexImageDataType::UnsignedInt_2_10_10_10_Rev
+				=> 4,
+			_ => 0,
+		};
+
+		debug_assert!(size != 0, "invalid data type");
+
+		debug_assert!(
+			width * size == bytes.len(),
+			"invalid width",
+		);
+	}
+
 	unsafe {
 		gl::TexImage1D(
 			target as u32,
