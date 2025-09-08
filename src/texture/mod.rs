@@ -268,6 +268,103 @@ pub enum TexImageDataType {
 	UnsignedInt_2_10_10_10_Rev = gl::UNSIGNED_INT_2_10_10_10_REV,
 }
 
+// surely these can be shared across these functions, right?
+fn util_datavalidation(
+	inner_format: TexImageInnerFormat,
+	data_format: TexImageDataFormat,
+	data_type: TexImageDataType,
+) -> bool {
+	let a = match data_type {
+		| TexImageDataType::UnsignedByte_3_3_2
+		| TexImageDataType::UnsignedByte_2_3_3_Rev
+		| TexImageDataType::UnsignedShort_5_6_5
+		| TexImageDataType::UnsignedShort_5_6_5_Rev =>
+			match data_format {
+				TexImageDataFormat::RGB => true,
+				_ => false,
+			},
+		| TexImageDataType::UnsignedShort_4_4_4_4
+		| TexImageDataType::UnsignedShort_4_4_4_4_Rev
+		| TexImageDataType::UnsignedShort_5_5_5_1
+		| TexImageDataType::UnsignedShort_1_5_5_5_Rev
+		| TexImageDataType::UnsignedInt_8_8_8_8
+		| TexImageDataType::UnsignedInt_8_8_8_8_Rev
+		| TexImageDataType::UnsignedInt_10_10_10_2
+		| TexImageDataType::UnsignedInt_2_10_10_10_Rev =>
+			match data_format {
+				| TexImageDataFormat::RGBA
+				| TexImageDataFormat::BGRA => true,
+				_ => false,
+			},
+		_ => true,
+	};
+
+	let b = match inner_format {
+		| TexImageInnerFormat::DepthComponent
+		| TexImageInnerFormat::DepthComponent16
+		| TexImageInnerFormat::DepthComponent24
+		| TexImageInnerFormat::DepthComponent32F => 
+			match data_format {
+				| TexImageDataFormat::DepthComponent => true,
+				_ => false,
+			},
+		_ => match data_format {
+				| TexImageDataFormat::DepthComponent => false,
+				_ => true,
+			},
+	};
+
+	return a && b;
+}
+
+fn util_samplesize(
+	data_format: TexImageDataFormat,
+	data_type: TexImageDataType,
+) -> Option<usize> {
+	let stride = match data_format {
+		TexImageDataFormat::Red => 1,
+		TexImageDataFormat::RG => 2,
+		TexImageDataFormat::RGB
+		| TexImageDataFormat::BGR => 3,
+		TexImageDataFormat::RGBA
+		| TexImageDataFormat::BGRA => 4,
+		// deal with it later
+		TexImageDataFormat::DepthComponent => 1,
+		// what the fuck ???
+		_ => return None,
+	};
+
+	let size = match data_type {
+		| TexImageDataType::Byte
+		| TexImageDataType::UnsignedByte
+			=> stride * 1,
+		| TexImageDataType::UnsignedByte_3_3_2
+		| TexImageDataType::UnsignedByte_2_3_3_Rev
+			=> 1,
+		| TexImageDataType::Short
+		| TexImageDataType::UnsignedShort
+			=> stride * 2,
+		| TexImageDataType::UnsignedShort_5_6_5
+		| TexImageDataType::UnsignedShort_5_6_5_Rev
+		| TexImageDataType::UnsignedShort_4_4_4_4
+		| TexImageDataType::UnsignedShort_4_4_4_4_Rev
+		| TexImageDataType::UnsignedShort_5_5_5_1
+		| TexImageDataType::UnsignedShort_1_5_5_5_Rev
+			=> 2,
+		| TexImageDataType::Int
+		| TexImageDataType::UnsignedInt
+		| TexImageDataType::Float
+			=> stride * 4,
+		| TexImageDataType::UnsignedInt_8_8_8_8
+		| TexImageDataType::UnsignedInt_8_8_8_8_Rev
+		| TexImageDataType::UnsignedInt_10_10_10_2
+		| TexImageDataType::UnsignedInt_2_10_10_10_Rev
+			=> 4,
+		_ => return None,
+	};
+
+	return Some(size);
+}
 
 
 #[repr(u32)]
@@ -288,105 +385,24 @@ pub fn tex_image_1d(
 	data_type: TexImageDataType,
 	data: Option<&[u8]>,
 ) {
-	debug_assert!(
-		match data_type {
-			| TexImageDataType::UnsignedByte_3_3_2
-			| TexImageDataType::UnsignedByte_2_3_3_Rev
-			| TexImageDataType::UnsignedShort_5_6_5
-			| TexImageDataType::UnsignedShort_5_6_5_Rev =>
-				match data_format {
-					TexImageDataFormat::RGB => true,
-					_ => false,
-				},
-			| TexImageDataType::UnsignedShort_4_4_4_4
-			| TexImageDataType::UnsignedShort_4_4_4_4_Rev
-			| TexImageDataType::UnsignedShort_5_5_5_1
-			| TexImageDataType::UnsignedShort_1_5_5_5_Rev
-			| TexImageDataType::UnsignedInt_8_8_8_8
-			| TexImageDataType::UnsignedInt_8_8_8_8_Rev
-			| TexImageDataType::UnsignedInt_10_10_10_2
-			| TexImageDataType::UnsignedInt_2_10_10_10_Rev =>
-				match data_format {
-					| TexImageDataFormat::RGBA
-					| TexImageDataFormat::BGRA => true,
-					_ => false,
-				},
-			_ => true,
-		},
-		"invalid format",
-	);
-
-	debug_assert!(
-		match inner_format {
-			| TexImageInnerFormat::DepthComponent
-			| TexImageInnerFormat::DepthComponent16
-			| TexImageInnerFormat::DepthComponent24
-			| TexImageInnerFormat::DepthComponent32F => 
-				match data_format {
-					| TexImageDataFormat::DepthComponent => true,
-					_ => false,
-				},
-			_ => match data_format {
-					| TexImageDataFormat::DepthComponent => false,
-					_ => true,
-				},
-		},
-		"invalid format",
-	);
+	debug_assert!(util_datavalidation(inner_format, data_format, data_type), "invalid format");
 
 	if let Some(bytes) = data {
-		let stride = match data_format {
-			TexImageDataFormat::Red => 1,
-			TexImageDataFormat::RG => 2,
-			TexImageDataFormat::RGB
-			| TexImageDataFormat::BGR => 3,
-			TexImageDataFormat::RGBA
-			| TexImageDataFormat::BGRA => 4,
-			// deal with it later
-			TexImageDataFormat::DepthComponent => 1,
-			// what the fuck ???
-			_ => 0,
-		};
-
-		debug_assert!(stride != 0, "invalid data format");
-
-		let size = match data_type {
-			| TexImageDataType::Byte
-			| TexImageDataType::UnsignedByte
-				=> stride * 1,
-			| TexImageDataType::UnsignedByte_3_3_2
-			| TexImageDataType::UnsignedByte_2_3_3_Rev
-				=> 1,
-			| TexImageDataType::Short
-			| TexImageDataType::UnsignedShort
-				=> stride * 2,
-			| TexImageDataType::UnsignedShort_5_6_5
-			| TexImageDataType::UnsignedShort_5_6_5_Rev
-			| TexImageDataType::UnsignedShort_4_4_4_4
-			| TexImageDataType::UnsignedShort_4_4_4_4_Rev
-			| TexImageDataType::UnsignedShort_5_5_5_1
-			| TexImageDataType::UnsignedShort_1_5_5_5_Rev
-				=> 2,
-			| TexImageDataType::Int
-			| TexImageDataType::UnsignedInt
-			| TexImageDataType::Float
-				=> stride * 4,
-			| TexImageDataType::UnsignedInt_8_8_8_8
-			| TexImageDataType::UnsignedInt_8_8_8_8_Rev
-			| TexImageDataType::UnsignedInt_10_10_10_2
-			| TexImageDataType::UnsignedInt_2_10_10_10_Rev
-				=> 4,
-			_ => 0,
-		};
-
-		debug_assert!(size != 0, "invalid data type");
-
+		let size = util_samplesize(data_format, data_type);
 		debug_assert!(
-			width * size == bytes.len(),
+			size.map(|x| width * x <= bytes.len()).unwrap_or(false),
 			"invalid width",
 		);
 	}
 
+	/*
+	safety:
+	the main concern is if `width` is more than the provided `data` buffer... this is
+	validated by calculating how many bytes each sample would be read as, then checking
+	if that number * `width` is less than `data.len()`.
+	it's okay if it is less, but this function panics if the number is larger. (hopefully -
+	barring opengl bullshit i couldnt have seen coming.)
+	*/ 
 	unsafe {
 		gl::TexImage1D(
 			target as u32,
@@ -408,8 +424,11 @@ pub fn tex_image_1d(
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TexImage2DTarget {
+	/// GL_TEXTURE_2D
 	Texture2D = gl::TEXTURE_2D,
+	// GL_TEXTURE_1D_ARRAY
 	Texture1DArray = gl::TEXTURE_1D_ARRAY,
+	// GL_TEXTURE_RECTANGLE
 	TextureRectangle = gl::TEXTURE_RECTANGLE,
 	TextureCubeMapPositiveX = gl::TEXTURE_CUBE_MAP_POSITIVE_X,
 	TextureCubeMapNegativeX = gl::TEXTURE_CUBE_MAP_NEGATIVE_X,
@@ -424,9 +443,7 @@ pub enum TexImage2DTarget {
 }
 
 /// [`glTexImage2D()`](https://docs.gl/gl3/glTexImage2D)
-/// 
-/// safety: must ensure that `data` has enough bytes
-pub unsafe fn tex_image_2d(
+pub fn tex_image_2d(
 	target: TexImage2DTarget,
 	level: u16,
 	inner_format: TexImageInnerFormat,
@@ -436,12 +453,42 @@ pub unsafe fn tex_image_2d(
 	data_type: TexImageDataType, 
 	data: Option<&[u8]>
 ) {
+	// level must be zero for texturerectangles
 	debug_assert!(match target {
 		| TexImage2DTarget::TextureRectangle
 		| TexImage2DTarget::ProxyTextureRectangle
 		=> level == 0,
 		_ => true,
 	});
+
+	// width and height must be equal in cubemap targets
+	debug_assert!(match target {
+		| TexImage2DTarget::TextureCubeMapNegativeX
+		| TexImage2DTarget::TextureCubeMapNegativeY
+		| TexImage2DTarget::TextureCubeMapNegativeZ
+		| TexImage2DTarget::TextureCubeMapPositiveX
+		| TexImage2DTarget::TextureCubeMapPositiveY
+		| TexImage2DTarget::TextureCubeMapPositiveZ
+			=> width == height,
+		_ => true,
+	});
+
+	// todo: 0 <= width <= GL_MAX_TEXTURE_SIZE ?
+
+	// todo: if target != texture1darrays, 0 <= height GL_MAX_TEXTURE_SIZE
+	// else, 0 <= height <= GL_MAX_ARRAY_TEXTURE_LAYERS
+
+	// todo: level > log_2(GL_MAX_TEXTURE_SIZE)
+
+	// todo: format checking
+
+	if let Some(bytes) = data {
+		let size = util_samplesize(data_format, data_type);
+		debug_assert!(
+			size.map(|x| width * height * x <= bytes.len()).unwrap_or(false),
+			"invalid width and height",
+		);
+	}
 	
 	unsafe {
 		gl::TexImage2D(
@@ -473,9 +520,7 @@ pub enum TexImage3DTarget {
 }
 
 /// [`glTexImage3D()`](https://docs.gl/gl3/glTexImage3D)
-/// 
-/// safety: must ensure that `data` has enough bytes
-pub unsafe fn tex_image_3d(
+pub fn tex_image_3d(
 	target: TexImage3DTarget,
 	level: u16,
 	inner_format: TexImageInnerFormat,
@@ -495,6 +540,14 @@ pub unsafe fn tex_image_3d(
 		_ => true,
 	});
 	// todo: input validation
+
+	if let Some(bytes) = data {
+		let size = util_samplesize(data_format, data_type);
+		debug_assert!(
+			size.map(|x| width * height * depth * x <= bytes.len()).unwrap_or(false),
+			"invalid width, height, and depth",
+		);
+	}
 
 	unsafe {
 		gl::TexImage3D(
