@@ -10,7 +10,13 @@ impl FramebufferObject {
 		self.0
 	}
 }
+impl Drop for FramebufferObject {
+	fn drop(&mut self) {
+		delete_framebuffers([unsafe { std::ptr::read(self) }]);
+	}
+}
 
+/// https://docs.gl/gl3/glGenFramebuffers
 pub fn gen_framebuffers<const N: usize>() -> [FramebufferObject; N] {
 	let mut list = [0; N];
 	unsafe {
@@ -19,13 +25,16 @@ pub fn gen_framebuffers<const N: usize>() -> [FramebufferObject; N] {
 	list.map(|v| FramebufferObject(v))
 }
 
+/// https://docs.gl/gl3/glDeleteFramebuffers
 pub fn delete_framebuffers<const N: usize>(framebuffers: [FramebufferObject; N]) {
-	let list = framebuffers.map(|v| v.handle());
+	// manually drop to avoid double free
+	let list = framebuffers.map(|v| std::mem::ManuallyDrop::new(v).handle());
 	unsafe {
 		gl::DeleteFramebuffers(N.try_into().expect(ERROR_OOB), list.as_ptr());
 	}
 }
 
+/// https://docs.gl/gl3/glIsFramebuffers
 pub fn is_framebuffer(framebuffer: &FramebufferObject) -> bool {
 	unsafe {
 		gl::IsFramebuffer(framebuffer.handle()) == gl::TRUE
