@@ -11,6 +11,15 @@ impl ProgramObject {
 	}
 }
 
+impl Drop for ProgramObject {
+	fn drop(&mut self) {
+		delete_program(
+			// safety: obviously safe
+			unsafe { std::ptr::read(self) }
+		);
+	}
+}
+
 /// [`glCreateProgram()`](https://docs.gl/gl3/glCreateProgram)
 pub fn create_program() -> Result<ProgramObject, ()> {
 	let out = unsafe { gl::CreateProgram() };
@@ -24,7 +33,7 @@ pub fn create_program() -> Result<ProgramObject, ()> {
 /// [`glDeleteProgram()`](https://docs.gl/gl3/glDeleteProgram)
 pub fn delete_program(program: ProgramObject) {
 	unsafe {
-		gl::DeleteProgram(program.handle());
+		gl::DeleteProgram(std::mem::ManuallyDrop::new(program).handle());
 	}
 }
 

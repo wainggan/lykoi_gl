@@ -10,9 +10,13 @@ impl FramebufferObject {
 		self.0
 	}
 }
+
 impl Drop for FramebufferObject {
 	fn drop(&mut self) {
-		delete_framebuffers([unsafe { std::ptr::read(self) }]);
+		delete_framebuffers([
+			// safety: obviously safe
+			unsafe { std::ptr::read(self) }
+		]);
 	}
 }
 

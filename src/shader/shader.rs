@@ -8,6 +8,15 @@ impl ShaderObject {
 	}
 }
 
+impl Drop for ShaderObject {
+	fn drop(&mut self) {
+		delete_shader(
+			// safety: obviously safe
+			unsafe { std::ptr::read(self) }
+		);
+	}
+}
+
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ShaderType {
@@ -29,7 +38,7 @@ pub fn create_shader(kind: ShaderType) -> Result<ShaderObject, ()> {
 /// [`glDeleteShader()`](https://docs.gl/gl3/glDeleteShader)
 pub fn delete_shader(shader: ShaderObject) {
 	unsafe {
-		gl::DeleteShader(shader.handle());
+		gl::DeleteShader(std::mem::ManuallyDrop::new(shader).handle());
 	}
 }
 

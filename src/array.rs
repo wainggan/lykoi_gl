@@ -11,6 +11,14 @@ impl VertexArrayObject {
 	}
 }
 
+impl Drop for VertexArrayObject {
+	fn drop(&mut self) {
+		delete_vertex_arrays([
+			// safety: obviously safe
+			unsafe { std::ptr::read(self) }
+		]);
+	}
+}
 
 /// [`glGenVertexArrays()`](https://docs.gl/gl3/glGenVertexArrays)
 pub fn gen_vertex_arrays<const N: usize>() -> [VertexArrayObject; N] {
@@ -23,7 +31,7 @@ pub fn gen_vertex_arrays<const N: usize>() -> [VertexArrayObject; N] {
 
 /// [`glDeleteVertexArrays()`](https://docs.gl/gl3/glDeleteVertexArrays)
 pub fn delete_vertex_arrays<const N: usize>(arrays: [VertexArrayObject; N]) {
-	let list = arrays.map(|v| v.handle());
+	let list = arrays.map(|v| std::mem::ManuallyDrop::new(v).handle());
 	unsafe {
 		gl::DeleteVertexArrays(N.try_into().expect(ERROR_OOB), list.as_ptr());
 	}

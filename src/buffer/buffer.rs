@@ -13,6 +13,15 @@ impl BufferObject {
 	}
 }
 
+impl Drop for BufferObject {
+	fn drop(&mut self) {
+		delete_buffers([
+			// safety: obviously safe
+			unsafe { std::ptr::read(self) }
+		]);
+	}
+}
+
 pub fn gen_buffers<const N: usize>() -> [BufferObject; N] {
 	let mut list = [0; N];
 	unsafe {
@@ -22,7 +31,7 @@ pub fn gen_buffers<const N: usize>() -> [BufferObject; N] {
 }
 
 pub fn delete_buffers<const N: usize>(buffers: [BufferObject; N]) {
-	let list = buffers.map(|v| v.handle());
+	let list = buffers.map(|v| std::mem::ManuallyDrop::new(v).handle());
 	unsafe {
 		gl::DeleteBuffers(N.try_into().expect(ERROR_OOB), list.as_ptr());
 	}

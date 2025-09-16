@@ -16,6 +16,14 @@ impl TextureObject {
 	}
 }
 
+impl Drop for TextureObject {
+	fn drop(&mut self) {
+		delete_textures([
+			// safety: obviously safe
+			unsafe { std::ptr::read(self) }
+		]);
+	}
+}
 
 /// [`glGenTextures()`](https://docs.gl/gl3/glGenTextures)
 pub fn gen_textures<const N: usize>() -> [TextureObject; N] {
@@ -28,7 +36,7 @@ pub fn gen_textures<const N: usize>() -> [TextureObject; N] {
 
 /// [`glDeleteTextures()`](https://docs.gl/gl3/glDeleteTextures)
 pub fn delete_textures<const N: usize>(textures: [TextureObject; N]) {
-	let list = textures.map(|v| v.handle());
+	let list = textures.map(|v| std::mem::ManuallyDrop::new(v).handle());
 	unsafe {
 		gl::DeleteTextures(N.try_into().expect(ERROR_OOB), list.as_ptr());
 	}

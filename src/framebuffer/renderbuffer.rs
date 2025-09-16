@@ -13,6 +13,15 @@ impl RenderbufferObject {
 	}
 }
 
+impl Drop for RenderbufferObject {
+	fn drop(&mut self) {
+		delete_renderbuffers([
+			// safety: obviously safe
+			unsafe { std::ptr::read(self) }
+		]);
+	}
+}
+
 pub fn gen_renderbuffers<const N: usize>() -> [RenderbufferObject; N] {
 	let mut list = [0; N];
 	unsafe {
@@ -22,7 +31,7 @@ pub fn gen_renderbuffers<const N: usize>() -> [RenderbufferObject; N] {
 }
 
 pub fn delete_renderbuffers<const N: usize>(renderbuffers: [RenderbufferObject; N]) {
-	let list = renderbuffers.map(|v| v.handle());
+	let list = renderbuffers.map(|v| std::mem::ManuallyDrop::new(v).handle());
 	unsafe {
 		gl::DeleteRenderbuffers(N.try_into().expect(ERROR_OOB), list.as_ptr());
 	}
