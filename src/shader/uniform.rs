@@ -67,8 +67,7 @@ pub fn uniform_4f(uniform: &UniformLocation, x: f32, y: f32, z: f32, w: f32) {
 }
 
 // is there a better api we can use?
-pub fn uniform_matrix_4fv(uniform: &UniformLocation, transpose: bool, value: &[f32]) {
-	assert!(value.len() == 16);
+pub fn uniform_matrix_4fv(uniform: &UniformLocation, transpose: bool, value: &[f32; 16]) {
 	// TODO: array of matrix support
 	unsafe {
 		gl::UniformMatrix4fv(
@@ -79,5 +78,4 @@ pub fn uniform_matrix_4fv(uniform: &UniformLocation, transpose: bool, value: &[f
 		);
 	}
 }
-
 

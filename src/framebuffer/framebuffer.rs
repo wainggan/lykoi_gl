@@ -87,7 +87,7 @@ pub enum FramebufferAttachment {
 	DepthStencilAttachment,
 }
 impl FramebufferAttachment {
-	fn out(self) -> u32 {
+	pub(crate) fn out(self) -> u32 {
 		match self {
 			Self::ColorAttachment(x) => {
 				debug_assert!(

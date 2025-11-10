@@ -1,8 +1,6 @@
 
 use crate::msg::ERROR_OOB;
 
-use super::framebuffer::FramebufferTarget;
-
 
 /// wrapper over an OpenGL "Renderbuffer Object" name.
 #[derive(Debug)]
@@ -22,6 +20,7 @@ impl Drop for RenderbufferObject {
 	}
 }
 
+/// [`glGenRenderbuffers()`](https://docs.gl/gl3/glGenRenderbuffers)
 pub fn gen_renderbuffers<const N: usize>() -> [RenderbufferObject; N] {
 	let mut list = [0; N];
 	unsafe {
@@ -30,6 +29,7 @@ pub fn gen_renderbuffers<const N: usize>() -> [RenderbufferObject; N] {
 	list.map(RenderbufferObject)
 }
 
+/// [`glDeleteRenderbuffers()`](https://docs.gl/gl3/glDeleteRenderbuffers)
 pub fn delete_renderbuffers<const N: usize>(renderbuffers: [RenderbufferObject; N]) {
 	let list = renderbuffers.map(|v| std::mem::ManuallyDrop::new(v).handle());
 	unsafe {
@@ -37,46 +37,53 @@ pub fn delete_renderbuffers<const N: usize>(renderbuffers: [RenderbufferObject; 
 	}
 }
 
+/// [`glIsRenderbuffer()`](https://docs.gl/gl3/glIsRenderbuffer)
 pub fn is_renderbuffer(renderbuffer: &RenderbufferObject) -> bool {
 	unsafe {
 		gl::IsRenderbuffer(renderbuffer.handle()) == gl::TRUE
 	}
 }
 
+/// [`glBindRenderbuffer()`](https://docs.gl/gl3/glBindRenderbuffer)
 pub fn bind_renderbuffer(renderbuffer: &RenderbufferObject) {
 	unsafe {
 		gl::BindRenderbuffer(gl::RENDERBUFFER, renderbuffer.handle());
 	}
 }
 
+/// [`glBindRenderbuffer()`](https://docs.gl/gl3/glBindRenderbuffer)
 pub fn unbind_renderbuffer() {
 	unsafe {
 		gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
 	}
 }
 
-// todo: enum
-pub fn renderbuffer_storage(format: u32, width: usize, height: usize) {
+/// [`glRenderbufferStorage()`](https://docs.gl/gl3/glRenderbufferStorage)
+pub fn renderbuffer_storage(format: crate::TexImageInnerFormat, width: usize, height: usize) {
+	debug_assert!(width <= crate::get_max_renderbuffer_size() as usize);
+
+	debug_assert!(height <= crate::get_max_renderbuffer_size() as usize);
+	
 	unsafe {
 		gl::RenderbufferStorage(
 			gl::RENDERBUFFER,
-			format,
+			format as u32,
 			width as i32,
 			height as i32,
 		);
 	}
 }
 
-// todo: enum
+/// [`glFramebufferRenderbuffer()`](https://docs.gl/gl3/glFramebufferRenderbuffer)
 pub fn framebuffer_renderbuffer(
-	target: FramebufferTarget,
-	attachment: u32,
+	target: crate::FramebufferTarget,
+	attachment: crate::FramebufferAttachment,
 	renderbuffer: &RenderbufferObject,
 ) {
 	unsafe {
 		gl::FramebufferRenderbuffer(
 			target as u32,
-			attachment,
+			attachment.out(),
 			gl::RENDERBUFFER,
 			renderbuffer.handle(),
 		);
