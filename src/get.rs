@@ -127,3 +127,28 @@ pub fn get_max_array_texture_layers() -> u32 {
 	}
 	data as u32
 }
+
+/// rough estimate of the largest cubemap texture GL can handle.
+/// will be at least 1024.
+/// 
+/// [`glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, ...)`](https://docs.gl/gl3/glGet)
+pub fn get_max_cube_map_texture_size() -> u32 {
+	let mut data = 0;
+	unsafe {
+		gl::GetIntegerv(gl::MAX_CUBE_MAP_TEXTURE_SIZE, &raw mut data);
+	}
+	data as u32
+}
+
+/// maximum number of color attachments in a framebuffer object.
+/// will be at least 4.
+/// 
+/// [`glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, ...)`](https://docs.gl/gl3/glGet)
+pub fn get_max_color_attachments() -> u32 {
+	let mut data = 0;
+	unsafe {
+		gl::GetIntegerv(gl::MAX_COLOR_ATTACHMENTS, &raw mut data);
+	}
+	data as u32
+}
+
