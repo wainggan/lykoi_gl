@@ -31,7 +31,7 @@ pub fn gen_textures<const N: usize>() -> [TextureObject; N] {
 	unsafe {
 		gl::GenTextures(N.try_into().expect(ERROR_OOB), list.as_mut_ptr());
 	}
-	list.map(|v| TextureObject(v))
+	list.map(TextureObject)
 }
 
 /// [`glDeleteTextures()`](https://docs.gl/gl3/glDeleteTextures)
@@ -93,8 +93,7 @@ pub fn unbind_texture(target: BindTextureTarget) {
 
 /// [`glActiveTexture()`](https://docs.gl/gl3/glActiveTexture)
 pub fn active_texture(unit: u32) {
-	// todo: support more?
-	assert!(gl::TEXTURE0 <= unit && unit <= gl::TEXTURE15);
+	debug_assert!(unit < crate::get_max_combined_texture_image_units());
 	unsafe {
 		gl::ActiveTexture(unit);
 	}
@@ -246,7 +245,7 @@ pub enum TexImageDataFormat {
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types, reason="legibility")]
 pub enum TexImageDataType {
 	UnsignedByte = gl::UNSIGNED_BYTE,
 	Byte = gl::BYTE,
@@ -287,10 +286,7 @@ fn util_datavalidation(
 		| TexImageDataType::UnsignedByte_2_3_3_Rev
 		| TexImageDataType::UnsignedShort_5_6_5
 		| TexImageDataType::UnsignedShort_5_6_5_Rev =>
-			match data_format {
-				TexImageDataFormat::RGB => true,
-				_ => false,
-			},
+			matches!(data_format, TexImageDataFormat::RGB),
 		| TexImageDataType::UnsignedShort_4_4_4_4
 		| TexImageDataType::UnsignedShort_4_4_4_4_Rev
 		| TexImageDataType::UnsignedShort_5_5_5_1
@@ -299,11 +295,7 @@ fn util_datavalidation(
 		| TexImageDataType::UnsignedInt_8_8_8_8_Rev
 		| TexImageDataType::UnsignedInt_10_10_10_2
 		| TexImageDataType::UnsignedInt_2_10_10_10_Rev =>
-			match data_format {
-				| TexImageDataFormat::RGBA
-				| TexImageDataFormat::BGRA => true,
-				_ => false,
-			},
+			matches!(data_format, TexImageDataFormat::RGBA | TexImageDataFormat::BGRA),
 		_ => true,
 	};
 
@@ -312,17 +304,11 @@ fn util_datavalidation(
 		| TexImageInnerFormat::DepthComponent16
 		| TexImageInnerFormat::DepthComponent24
 		| TexImageInnerFormat::DepthComponent32F => 
-			match data_format {
-				| TexImageDataFormat::DepthComponent => true,
-				_ => false,
-			},
-		_ => match data_format {
-				| TexImageDataFormat::DepthComponent => false,
-				_ => true,
-			},
+			matches!(data_format, TexImageDataFormat::DepthComponent),
+		_ => !matches!(data_format, TexImageDataFormat::DepthComponent),
 	};
 
-	return a && b;
+	a && b
 }
 
 fn util_samplesize(
@@ -345,7 +331,7 @@ fn util_samplesize(
 	let size = match data_type {
 		| TexImageDataType::Byte
 		| TexImageDataType::UnsignedByte
-			=> stride * 1,
+			=> stride,
 		| TexImageDataType::UnsignedByte_3_3_2
 		| TexImageDataType::UnsignedByte_2_3_3_Rev
 			=> 1,
@@ -371,7 +357,7 @@ fn util_samplesize(
 		_ => return None,
 	};
 
-	return Some(size);
+	Some(size)
 }
 
 
@@ -396,9 +382,10 @@ pub fn tex_image_1d(
 	debug_assert!(util_datavalidation(inner_format, data_format, data_type), "invalid format");
 
 	if let Some(bytes) = data {
-		let size = util_samplesize(data_format, data_type);
 		debug_assert!(
-			size.map(|x| width * x <= bytes.len()).unwrap_or(false),
+			util_samplesize(data_format, data_type)
+				.map(|x| width * x <= bytes.len())
+				.unwrap_or(false),
 			"invalid width",
 		);
 	}
@@ -451,6 +438,7 @@ pub enum TexImage2DTarget {
 }
 
 /// [`glTexImage2D()`](https://docs.gl/gl3/glTexImage2D)
+#[expect(clippy::too_many_arguments, reason="match the c function arguments")]
 pub fn tex_image_2d(
 	target: TexImage2DTarget,
 	level: u16,
@@ -459,9 +447,9 @@ pub fn tex_image_2d(
 	height: usize,
 	data_format: TexImageDataFormat,
 	data_type: TexImageDataType, 
-	data: Option<&[u8]>
+	data: Option<&[u8]>,
 ) {
-	// level must be zero for texturerectangles
+	// level must be 0 for texturerectangles
 	debug_assert!(match target {
 		| TexImage2DTarget::TextureRectangle
 		| TexImage2DTarget::ProxyTextureRectangle
@@ -481,19 +469,30 @@ pub fn tex_image_2d(
 		_ => true,
 	});
 
-	// todo: 0 <= width <= GL_MAX_TEXTURE_SIZE ?
+	// width must be less than the largest supported texture size
+	debug_assert!(width <= crate::get_max_texture_size() as usize);
 
-	// todo: if target != texture1darrays, 0 <= height GL_MAX_TEXTURE_SIZE
-	// else, 0 <= height <= GL_MAX_ARRAY_TEXTURE_LAYERS
+	debug_assert!(
+		if matches!(target, TexImage2DTarget::Texture1DArray | TexImage2DTarget::ProxyTexture1DArray) {
+			// if using 1D arrays, `height`` indicates layer count.
+			// in such a case, height must be less than the maximum layer count
+			height <= crate::get_max_array_texture_layers() as usize
+		} else {
+			// otherwise, height, again, must be less than the largest supported texture size
+			height <= crate::get_max_texture_size() as usize
+		}
+	);
 
-	// todo: level > log_2(GL_MAX_TEXTURE_SIZE)
+	// level must be less than `log_2(max)`, where `max` is the largest supported texture size
+	debug_assert!(level <= crate::get_max_texture_size().ilog2() as u16);
 
 	// todo: format checking
 
 	if let Some(bytes) = data {
-		let size = util_samplesize(data_format, data_type);
 		debug_assert!(
-			size.map(|x| width * height * x <= bytes.len()).unwrap_or(false),
+			util_samplesize(data_format, data_type)
+				.map(|x| width * height * x <= bytes.len())
+				.unwrap_or(false),
 			"invalid width and height",
 		);
 	}
@@ -528,6 +527,7 @@ pub enum TexImage3DTarget {
 }
 
 /// [`glTexImage3D()`](https://docs.gl/gl3/glTexImage3D)
+#[expect(clippy::too_many_arguments, reason="match the c function arguments")]
 pub fn tex_image_3d(
 	target: TexImage3DTarget,
 	level: u16,
@@ -550,9 +550,10 @@ pub fn tex_image_3d(
 	// todo: input validation
 
 	if let Some(bytes) = data {
-		let size = util_samplesize(data_format, data_type);
 		debug_assert!(
-			size.map(|x| width * height * depth * x <= bytes.len()).unwrap_or(false),
+			util_samplesize(data_format, data_type)
+				.map(|x| width * height * depth * x <= bytes.len())
+				.unwrap_or(false),
 			"invalid width, height, and depth",
 		);
 	}

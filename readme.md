@@ -15,7 +15,7 @@ per output-requested. ie: `glGetIntegerv(GL_ACTIVE_TEXTURE, ...)` vs [`get_activ
 all functions are themselves thin wrappers over bindings provided by the `gl` crate,
 re-exported via [`raw`].
 
-50% sure there is a vulnerability somewhere. I have no idea what I'm doing...
+10% sure there is a vulnerability somewhere. I have no idea what I'm doing...
 
 good luck.
 

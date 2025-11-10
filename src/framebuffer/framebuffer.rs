@@ -81,20 +81,33 @@ pub fn check_framebuffer_status(target: FramebufferTarget) -> bool {
 #[repr(u32)]
 pub enum FramebufferAttachment {
 	ColorAttachment = gl::COLOR_ATTACHMENT0,
+	DepthAttachment = gl::DEPTH_ATTACHMENT,
+	StencilAttachment = gl::STENCIL_ATTACHMENT,
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FramebufferTexture2DTarget {
+	TextureCubeMapNegativeX = gl::TEXTURE_CUBE_MAP_NEGATIVE_X,
+	TextureCubeMapPositiveX = gl::TEXTURE_CUBE_MAP_POSITIVE_X,
+	TextureCubeMapNegativeY = gl::TEXTURE_CUBE_MAP_NEGATIVE_Y,
+	TextureCubeMapPositiveY = gl::TEXTURE_CUBE_MAP_POSITIVE_Y,
+	TextureCubeMapNegativeZ = gl::TEXTURE_CUBE_MAP_NEGATIVE_Z,
+	TextureCubeMapPositiveZ = gl::TEXTURE_CUBE_MAP_POSITIVE_Z,
 }
 
 // todo: PLEASE do something about the enum problem
 pub fn framebuffer_texture_2d(
 	target: FramebufferTarget,
-	attachment: FramebufferAttachment,
-	textarget: u32,
+	attachment: FramebufferAttachment, // add increment param for colorattachment? how do we make sure it only works for that discriminant
+	textarget: FramebufferTexture2DTarget, // <- continue:
 	texture: &TextureObject,
 ) {
 	unsafe {
 		gl::FramebufferTexture2D(
 			target as u32,
 			attachment as u32,
-			textarget,
+			textarget as u32,
 			texture.handle(),
 			0,
 		);

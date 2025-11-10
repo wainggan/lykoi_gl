@@ -28,7 +28,7 @@ pub fn gen_samplers<const N: usize>() -> [SamplerObject; N] {
 	unsafe {
 		gl::GenSamplers(N.try_into().expect(ERROR_OOB), list.as_mut_ptr());
 	}
-	list.map(|v| SamplerObject(v))
+	list.map(SamplerObject)
 }
 
 pub fn delete_samplers<const N: usize>(samplers: [SamplerObject; N]) {

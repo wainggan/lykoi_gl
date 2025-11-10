@@ -18,6 +18,9 @@ pub use error::*;
 mod get;
 pub use get::*;
 
+mod enable;
+pub use enable::*;
+
 mod shader;
 pub use shader::*;
 
