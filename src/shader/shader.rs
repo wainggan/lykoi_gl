@@ -26,12 +26,12 @@ pub enum ShaderType {
 }
 
 /// [`glCreateShader()`](https://docs.gl/gl3/glCreateShader)
-pub fn create_shader(kind: ShaderType) -> Result<ShaderObject, ()> {
+pub fn create_shader(kind: ShaderType) -> Option<ShaderObject> {
 	let out = unsafe { gl::CreateShader(kind as u32) };
 	if out == 0 {
-		Err(())
+		None
 	} else {
-		Ok(ShaderObject(out))
+		Some(ShaderObject(out))
 	}
 }
 

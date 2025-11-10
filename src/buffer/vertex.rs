@@ -34,10 +34,7 @@ pub fn vertex_attrib_pointer(
 	stride: u32,
 	offset: u32,
 ) {
-	assert!(match size {
-		1 | 2 | 3 | 4 => true,
-		_ => false,
-	});
+	assert!(matches!(size, 1..=4));
 	unsafe {
 		gl::VertexAttribPointer(
 			target,

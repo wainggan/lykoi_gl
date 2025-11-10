@@ -26,7 +26,7 @@ pub fn gen_framebuffers<const N: usize>() -> [FramebufferObject; N] {
 	unsafe {
 		gl::GenFramebuffers(N.try_into().expect(ERROR_OOB), list.as_mut_ptr());
 	}
-	list.map(|v| FramebufferObject(v))
+	list.map(FramebufferObject)
 }
 
 /// https://docs.gl/gl3/glDeleteFramebuffers

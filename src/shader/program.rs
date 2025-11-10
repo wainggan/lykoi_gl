@@ -21,12 +21,12 @@ impl Drop for ProgramObject {
 }
 
 /// [`glCreateProgram()`](https://docs.gl/gl3/glCreateProgram)
-pub fn create_program() -> Result<ProgramObject, ()> {
+pub fn create_program() -> Option<ProgramObject> {
 	let out = unsafe { gl::CreateProgram() };
 	if out == 0 {
-		Err(())
+		None
 	} else {
-		Ok(ProgramObject(out))
+		Some(ProgramObject(out))
 	}
 }
 

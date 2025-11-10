@@ -21,7 +21,7 @@ pub enum BufferBit {
 pub fn clear(bits: &[BufferBit]) {
 	let mask = bits
 		.iter()
-		.fold(0b0, |a, b| (a | *b as u32));
+		.fold(0b0, |a, b| a | *b as u32);
 	unsafe {
 		gl::Clear(mask);
 	}

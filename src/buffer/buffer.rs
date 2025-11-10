@@ -27,7 +27,7 @@ pub fn gen_buffers<const N: usize>() -> [BufferObject; N] {
 	unsafe {
 		gl::GenBuffers(N.try_into().expect(ERROR_OOB), list.as_mut_ptr());
 	}
-	list.map(|v| BufferObject(v))
+	list.map(BufferObject)
 }
 
 pub fn delete_buffers<const N: usize>(buffers: [BufferObject; N]) {

@@ -27,7 +27,7 @@ pub fn gen_renderbuffers<const N: usize>() -> [RenderbufferObject; N] {
 	unsafe {
 		gl::GenRenderbuffers(N.try_into().expect(ERROR_OOB), list.as_mut_ptr());
 	}
-	list.map(|v| RenderbufferObject(v))
+	list.map(RenderbufferObject)
 }
 
 pub fn delete_renderbuffers<const N: usize>(renderbuffers: [RenderbufferObject; N]) {

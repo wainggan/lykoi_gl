@@ -26,7 +26,7 @@ pub fn gen_vertex_arrays<const N: usize>() -> [VertexArrayObject; N] {
 	unsafe {
 		gl::GenVertexArrays(N.try_into().expect(ERROR_OOB), list.as_mut_ptr());
 	}
-	list.map(|v| VertexArrayObject(v))
+	list.map(VertexArrayObject)
 }
 
 /// [`glDeleteVertexArrays()`](https://docs.gl/gl3/glDeleteVertexArrays)
